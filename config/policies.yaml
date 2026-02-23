@@ -1,0 +1,133 @@
+# Centinela — Políticas de seguridad para comandos
+# Modo: allowlist (solo lo listado aquí se ejecuta sin preguntar)
+
+policies:
+  mode: "allowlist"
+
+  # Comandos seguros — se ejecutan sin aprobación
+  safe_commands:
+    # Filesystem (solo lectura)
+    - "ls"
+    - "cat"
+    - "head"
+    - "tail"
+    - "less"
+    - "file"
+    - "stat"
+    - "wc"
+    - "grep"
+    - "awk"
+    - "sed"
+    - "cut"
+    - "sort"
+    - "uniq"
+    - "diff"
+    - "find"
+    - "which"
+    - "whereis"
+    - "type"
+    - "realpath"
+    - "basename"
+    - "dirname"
+    # Sistema (solo lectura)
+    - "uname"
+    - "whoami"
+    - "id"
+    - "env"
+    - "printenv"
+    - "date"
+    - "uptime"
+    - "df"
+    - "du"
+    - "free"
+    # Git (solo lectura)
+    - "git status"
+    - "git log"
+    - "git diff"
+    - "git branch"
+    - "git show"
+    # Versiones
+    - "python3 --version"
+    - "node --version"
+    - "npm --version"
+    # Procesamiento de datos
+    - "jq"
+    - "yq"
+    - "base64"
+    - "md5sum"
+    - "sha256sum"
+    - "echo"
+    - "printf"
+    - "true"
+    - "false"
+    - "test"
+
+  # Comandos que requieren aprobación humana
+  approval_commands:
+    - "rm"
+    - "rmdir"
+    - "mv"
+    - "cp"
+    - "curl"
+    - "wget"
+    - "git push"
+    - "git remote"
+    - "git checkout"
+    - "git reset"
+    - "git rebase"
+    - "pip"
+    - "pip3"
+    - "npm install"
+    - "npm uninstall"
+    - "docker run"
+    - "docker exec"
+    - "docker-compose up"
+    - "make"
+    - "python3"
+    - "python"
+    - "node"
+    - "chmod"
+    - "chown"
+
+  # Comandos SIEMPRE bloqueados
+  blocked_commands:
+    - "sudo"
+    - "su"
+    - "chmod 777"
+    - "chmod -R 777"
+    - "dd"
+    - "mkfs"
+    - "fdisk"
+    - "parted"
+    - "shutdown"
+    - "reboot"
+    - "halt"
+    - "poweroff"
+    - "iptables"
+    - "ip6tables"
+    - "mount"
+    - "umount"
+    - "kill -9"
+    - "killall"
+    - "passwd"
+    - "useradd"
+    - "userdel"
+    - "rm -rf /"
+    - "rm -rf /*"
+
+  # Patrones regex siempre bloqueados
+  blocked_patterns:
+    - 'rm\s+-[rR]f?\s+/\s*$'
+    - 'rm\s+-[rR]f?\s+/\*'
+    - '>\s*/dev/[sh]d'
+    - 'mkfs\.'
+    - ':\(\)\s*\{\s*:\|:\s*&\s*\}\s*;:'
+    - 'curl.*\|\s*bash'
+    - 'wget.*\|\s*bash'
+    - 'eval\s+.*\$\('
+    - '/etc/shadow'
+    - '/etc/passwd.*>>'
+    - '\.ssh/'
+    - '\.aws/'
+    - '\.gnupg/'
+    - '\.centinela/.*\.yaml'
