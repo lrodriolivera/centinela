@@ -329,5 +329,74 @@ def status():
     console.print(f"\n[bold]Memoria:[/] {mem['total_entries']} entradas, {mem['total_days']} días, {mem['total_size_mb']} MB")
 
 
+@app.command()
+def daemon(
+    action: str = typer.Argument(..., help="Action: install, start, stop, status, uninstall, run"),
+):
+    """Manage the Centinela daemon service."""
+    from centinela.interfaces.daemon import (
+        daemon_status,
+        install_daemon,
+        run_daemon,
+        start_daemon,
+        stop_daemon,
+        uninstall_daemon,
+    )
+
+    if action == "install":
+        path = install_daemon()
+        console.print(f"[green]Daemon instalado:[/] {path}")
+
+    elif action == "start":
+        if start_daemon():
+            console.print("[green]Daemon iniciado.[/]")
+        else:
+            console.print("[red]Error al iniciar el daemon.[/]")
+
+    elif action == "stop":
+        if stop_daemon():
+            console.print("[yellow]Daemon detenido.[/]")
+        else:
+            console.print("[red]Error al detener el daemon.[/]")
+
+    elif action == "status":
+        info = daemon_status()
+        status_text = "[green]corriendo[/]" if info["running"] else "[red]detenido[/]"
+        console.print(f"Estado: {status_text}")
+        console.print(f"Plataforma: {info['platform']}")
+        if info.get("output"):
+            console.print(f"[dim]{info['output'][:300]}[/]")
+
+    elif action == "uninstall":
+        uninstall_daemon()
+        console.print("[yellow]Daemon desinstalado.[/]")
+
+    elif action == "run":
+        # Direct run — used by systemd/launchd
+        run_daemon()
+
+    else:
+        console.print(f"[red]Acción desconocida:[/] {action}")
+        console.print("Acciones: install, start, stop, status, uninstall, run")
+
+
+@app.command()
+def telegram():
+    """Start the Telegram bot (standalone, blocking)."""
+    from centinela.interfaces.telegram_bot import run_telegram_bot
+
+    console.print("[bold cyan]Iniciando bot de Telegram...[/]")
+    run_telegram_bot()
+
+
+@app.command()
+def slack():
+    """Start the Slack bot (standalone, blocking)."""
+    from centinela.interfaces.slack_bot import run_slack_bot
+
+    console.print("[bold cyan]Iniciando bot de Slack...[/]")
+    run_slack_bot()
+
+
 if __name__ == "__main__":
     app()
