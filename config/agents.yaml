@@ -1,0 +1,52 @@
+# Centinela — Configuración de agentes especializados
+
+agents:
+  coder:
+    description: "Lectura, escritura y edición de código"
+    permission_profile: "coding"
+    model: null  # Usa el modelo primario (Opus)
+    max_tool_rounds: 15
+    tools:
+      - read_file
+      - write_file
+      - edit_file
+      - list_files
+      - search_files
+
+  researcher:
+    description: "Investigación web y búsqueda en documentos"
+    permission_profile: "coding"
+    model: null
+    max_tool_rounds: 10
+    tools:
+      - search_knowledge
+      - index_document
+      - web_fetch
+      - web_search_extract
+      - read_file
+      - search_files
+
+  executor:
+    description: "Ejecución segura de comandos shell"
+    permission_profile: "coding"
+    model: null
+    max_tool_rounds: 10
+    tools:
+      - execute_command
+      - read_file
+      - list_files
+
+  reviewer:
+    description: "Revisión y validación de código y resultados"
+    permission_profile: "readonly"
+    model: "haiku"  # Usa Haiku para reviews rápidos
+    max_tool_rounds: 5
+    tools:
+      - read_file
+      - list_files
+      - search_files
+
+# Router: usa Haiku para clasificar intent (rápido y económico)
+router:
+  model: "haiku"
+  temperature: 0.0

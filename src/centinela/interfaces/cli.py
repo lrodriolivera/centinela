@@ -33,13 +33,19 @@ def chat(
     message: str = typer.Argument(None, help="Message to send (omit for interactive mode)"),
     model: str = typer.Option(None, "--model", "-m", help="Model alias: opus, sonnet, haiku"),
     stream: bool = typer.Option(True, "--stream/--no-stream", help="Enable streaming"),
+    direct: bool = typer.Option(False, "--direct", "-d", help="Bypass orchestrator, use base agent"),
 ):
-    """Chat with Centinela."""
-    from centinela.agents.base import BaseAgent
+    """Chat with Centinela (multi-agent orchestrator)."""
     from centinela.core.config import get_config
 
     config = get_config()
-    agent = BaseAgent(config=config, model=model)
+
+    if direct:
+        from centinela.agents.base import BaseAgent
+        agent = BaseAgent(config=config, model=model)
+    else:
+        from centinela.core.orchestrator import Orchestrator
+        agent = Orchestrator(config=config)
 
     if message:
         _send_message(agent, message, stream=stream)
@@ -240,6 +246,64 @@ def config(
 
         data = cfg.model_dump()
         console.print_json(_json.dumps(data, indent=2, default=str))
+
+
+@app.command()
+def audit(
+    last: int = typer.Option(20, "--last", "-n", help="Number of recent entries"),
+):
+    """Show recent audit log entries."""
+    from centinela.security.audit import get_audit_logger
+
+    logger = get_audit_logger()
+    entries = logger.get_recent(limit=last)
+
+    if not entries:
+        console.print("[dim]Sin entradas de auditoría.[/]")
+        return
+
+    table = Table(title=f"Audit Log (últimas {len(entries)})", show_header=True, header_style="bold")
+    table.add_column("Timestamp", style="dim", max_width=20)
+    table.add_column("Evento")
+    table.add_column("Agente")
+    table.add_column("Detalle", max_width=60)
+
+    for entry in entries:
+        ts = entry.get("timestamp", "?")[:19]
+        event = entry.get("event_type", "?")
+        agent = entry.get("agent_id", "?")
+        details = entry.get("details", {})
+        detail_str = ", ".join(f"{k}={v}" for k, v in list(details.items())[:3])
+        severity = entry.get("severity", "info")
+        style = "red" if severity in ("critical", "error") else "yellow" if severity == "warning" else ""
+        table.add_row(ts, f"[{style}]{event}[/]" if style else event, agent, detail_str[:60])
+
+    console.print(table)
+
+
+@app.command()
+def status():
+    """Show orchestrator status (agents, memory, models)."""
+    from centinela.core.orchestrator import get_orchestrator
+
+    orch = get_orchestrator()
+    info = orch.get_status()
+
+    # Agents
+    console.print(Panel("[bold]Agentes[/]", border_style="cyan"))
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Agente")
+    table.add_column("Permiso")
+    table.add_column("Historial")
+    table.add_column("Descripción")
+
+    for name, data in info["agents"].items():
+        table.add_row(name, data["permission_tier"], str(data["history_length"]), data["description"])
+    console.print(table)
+
+    # Memory
+    mem = info["memory"]
+    console.print(f"\n[bold]Memoria:[/] {mem['total_entries']} entradas, {mem['total_days']} días, {mem['total_size_mb']} MB")
 
 
 if __name__ == "__main__":
