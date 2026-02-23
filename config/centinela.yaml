@@ -1,0 +1,88 @@
+# Centinela — Configuración principal
+# Variables de entorno sobreescriben estos valores con prefijo CENTINELA_
+
+identity:
+  name: "Centinela"
+  version: "0.1.0"
+
+# Workspace del agente (directorio de trabajo)
+workspace: "~/Documentos/agente_IA_Personal"
+
+# Configuración de modelos LLM via AWS Bedrock
+models:
+  provider: "bedrock"
+  region: "us-east-1"
+  aws_profile: "bedrock"
+
+  # Modelo primario y cadena de fallback
+  primary: "us.anthropic.claude-opus-4-5-20251101-v1:0"
+  fallbacks:
+    - "us.anthropic.claude-sonnet-4-6"
+    - "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+
+  # Aliases para conveniencia
+  aliases:
+    opus: "us.anthropic.claude-opus-4-5-20251101-v1:0"
+    sonnet: "us.anthropic.claude-sonnet-4-6"
+    haiku: "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+
+  # Parámetros de inferencia por defecto
+  defaults:
+    max_tokens: 8192
+    temperature: 0.7
+    top_p: 0.95
+
+  # Configuración de fallback/retry
+  retry:
+    max_retries: 3
+    backoff_base: 2.0
+    backoff_max: 60.0
+  cooldown:
+    initial_seconds: 60
+    multiplier: 5
+    max_seconds: 3600
+
+# Gateway API
+gateway:
+  host: "127.0.0.1"
+  port: 8000
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://127.0.0.1:3000"
+  auth:
+    enabled: true
+    token_ttl_minutes: 15
+    algorithm: "HS256"
+
+# Seguridad
+security:
+  sandbox:
+    enabled: true
+    image: "centinela-sandbox:latest"
+    network: false
+    read_only: true
+    memory_limit: "512m"
+    cpu_limit: 1.0
+    timeout_seconds: 300
+
+  policies:
+    mode: "allowlist"
+
+  audit:
+    enabled: true
+    log_dir: "~/.centinela/logs"
+    redact_secrets: true
+    retention_days: 30
+
+# Memoria
+memory:
+  backend: "qdrant"
+  qdrant:
+    path: "~/.centinela/memory/qdrant"
+  transcripts:
+    path: "~/.centinela/memory/transcripts"
+
+# Logging
+logging:
+  level: "INFO"
+  format: "json"

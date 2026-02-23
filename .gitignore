@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Centinela runtime
+.centinela/
+*.log
+
+# Credentials — NEVER commit
+Credenciales/
+*.csv
+*.pem
+*.key
+.env
+.env.*
+
+# Docker
+docker/sandbox-data/
+
+# Test/coverage
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Node (web UI)
+node_modules/
+src/centinela/web/dist/
