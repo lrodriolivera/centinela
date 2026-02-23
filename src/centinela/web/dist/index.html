@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centinela — Panel de Control</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-input: #21262d;
+            --border: #30363d;
+            --text: #e6edf3;
+            --text-dim: #8b949e;
+            --accent: #58a6ff;
+            --accent-hover: #79c0ff;
+            --green: #3fb950;
+            --red: #f85149;
+            --yellow: #d29922;
+            --font: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: var(--font); background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
+
+        /* Header */
+        .header { background: var(--bg-secondary); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; gap: 16px; }
+        .header h1 { font-size: 16px; color: var(--accent); font-weight: 600; }
+        .header .status { font-size: 12px; color: var(--green); }
+        .header .nav { margin-left: auto; display: flex; gap: 12px; }
+        .header .nav button { background: none; border: 1px solid var(--border); color: var(--text-dim); padding: 4px 12px; border-radius: 6px; cursor: pointer; font-family: var(--font); font-size: 12px; }
+        .header .nav button.active, .header .nav button:hover { color: var(--accent); border-color: var(--accent); }
+
+        /* Main layout */
+        .main { flex: 1; display: flex; overflow: hidden; }
+
+        /* Chat panel */
+        .chat-panel { flex: 1; display: flex; flex-direction: column; }
+        .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+        .msg { max-width: 80%; padding: 10px 14px; border-radius: 8px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+        .msg.user { align-self: flex-end; background: #1f3a5f; border: 1px solid #264d73; }
+        .msg.assistant { align-self: flex-start; background: var(--bg-secondary); border: 1px solid var(--border); }
+        .msg .agent-tag { font-size: 10px; color: var(--accent); margin-bottom: 4px; display: block; }
+        .msg.system { align-self: center; color: var(--text-dim); font-size: 11px; background: none; border: none; }
+
+        /* Input */
+        .input-bar { background: var(--bg-secondary); border-top: 1px solid var(--border); padding: 12px 16px; display: flex; gap: 8px; }
+        .input-bar input { flex: 1; background: var(--bg-input); border: 1px solid var(--border); color: var(--text); padding: 10px 14px; border-radius: 8px; font-family: var(--font); font-size: 13px; outline: none; }
+        .input-bar input:focus { border-color: var(--accent); }
+        .input-bar button { background: var(--accent); color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-family: var(--font); font-size: 13px; font-weight: 600; cursor: pointer; }
+        .input-bar button:hover { background: var(--accent-hover); }
+        .input-bar button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Side panel */
+        .side-panel { width: 320px; background: var(--bg-secondary); border-left: 1px solid var(--border); overflow-y: auto; padding: 16px; display: none; }
+        .side-panel.visible { display: block; }
+        .side-panel h3 { font-size: 13px; color: var(--accent); margin-bottom: 12px; }
+        .card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; font-size: 12px; }
+        .card .label { color: var(--text-dim); }
+        .card .value { color: var(--text); font-weight: 600; }
+        .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; }
+        .badge.green { background: #1a3a2a; color: var(--green); }
+        .badge.yellow { background: #3a2f1a; color: var(--yellow); }
+        .badge.red { background: #3a1a1a; color: var(--red); }
+
+        /* Audit table */
+        .audit-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .audit-table th { text-align: left; color: var(--text-dim); padding: 6px 8px; border-bottom: 1px solid var(--border); }
+        .audit-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Centinela</h1>
+        <span class="status" id="status">Conectando...</span>
+        <div class="nav">
+            <button class="active" onclick="showTab('chat')">Chat</button>
+            <button onclick="showTab('agents')">Agentes</button>
+            <button onclick="showTab('audit')">Auditoría</button>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="chat-panel" id="chat-panel">
+            <div class="messages" id="messages">
+                <div class="msg system">Centinela v0.1.0 — Escribe un mensaje para comenzar</div>
+            </div>
+            <div class="input-bar">
+                <input type="text" id="input" placeholder="Escribe tu mensaje..." autocomplete="off" />
+                <button id="send-btn" onclick="sendMessage()">Enviar</button>
+            </div>
+        </div>
+
+        <div class="side-panel" id="side-panel"></div>
+    </div>
+
+    <script>
+        const API = window.location.origin + '/api';
+        let token = '';
+        let ws = null;
+
+        // Get token on load
+        async function init() {
+            try {
+                const res = await fetch(`${API}/token`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({subject: 'web_user'})
+                });
+                const data = await res.json();
+                token = data.token;
+                document.getElementById('status').textContent = 'Conectado';
+                document.getElementById('status').style.color = '#3fb950';
+                connectWS();
+            } catch (e) {
+                document.getElementById('status').textContent = 'Error de conexión';
+                document.getElementById('status').style.color = '#f85149';
+            }
+        }
+
+        function connectWS() {
+            const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${proto}//${location.host}/api/ws/chat`);
+            ws.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                if (data.type === 'chunk') {
+                    appendToLastAssistant(data.text);
+                } else if (data.type === 'done') {
+                    finishAssistant();
+                }
+            };
+            ws.onclose = () => {
+                document.getElementById('status').textContent = 'Desconectado';
+                document.getElementById('status').style.color = '#d29922';
+            };
+        }
+
+        function addMessage(role, text) {
+            const div = document.createElement('div');
+            div.className = `msg ${role}`;
+            div.textContent = text;
+            document.getElementById('messages').appendChild(div);
+            scrollToBottom();
+        }
+
+        function addAssistantStart() {
+            const div = document.createElement('div');
+            div.className = 'msg assistant';
+            div.id = 'current-response';
+            div.textContent = '';
+            document.getElementById('messages').appendChild(div);
+            scrollToBottom();
+        }
+
+        function appendToLastAssistant(text) {
+            let el = document.getElementById('current-response');
+            if (!el) { addAssistantStart(); el = document.getElementById('current-response'); }
+            el.textContent += text;
+            scrollToBottom();
+        }
+
+        function finishAssistant() {
+            const el = document.getElementById('current-response');
+            if (el) el.removeAttribute('id');
+            document.getElementById('send-btn').disabled = false;
+            document.getElementById('input').disabled = false;
+            document.getElementById('input').focus();
+        }
+
+        function scrollToBottom() {
+            const msgs = document.getElementById('messages');
+            msgs.scrollTop = msgs.scrollHeight;
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            addMessage('user', text);
+            input.value = '';
+            input.disabled = true;
+            document.getElementById('send-btn').disabled = true;
+
+            addAssistantStart();
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({message: text}));
+            } else {
+                // Fallback to SSE
+                fetchSSE(text);
+            }
+        }
+
+        async function fetchSSE(text) {
+            try {
+                const res = await fetch(`${API}/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({message: text})
+                });
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const {done, value} = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, {stream: true});
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                if (data.text) appendToLastAssistant(data.text);
+                                if (data.done) finishAssistant();
+                            } catch {}
+                        }
+                    }
+                }
+                finishAssistant();
+            } catch (e) {
+                appendToLastAssistant(`\n[Error: ${e.message}]`);
+                finishAssistant();
+            }
+        }
+
+        // Tabs
+        async function showTab(tab) {
+            document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            const side = document.getElementById('side-panel');
+
+            if (tab === 'chat') {
+                side.classList.remove('visible');
+                return;
+            }
+
+            side.classList.add('visible');
+
+            if (tab === 'agents') {
+                try {
+                    const res = await fetch(`${API}/agents`, {headers: {'Authorization': `Bearer ${token}`}});
+                    const agents = await res.json();
+                    side.innerHTML = '<h3>Agentes</h3>' + Object.entries(agents).map(([k, v]) =>
+                        `<div class="card">
+                            <div class="value">${v.name}</div>
+                            <div class="label">${v.description}</div>
+                            <div style="margin-top:4px">
+                                <span class="badge green">${v.permission_tier}</span>
+                                <span class="label"> historial: ${v.history_length}</span>
+                            </div>
+                        </div>`
+                    ).join('');
+                } catch (e) {
+                    side.innerHTML = `<h3>Error</h3><p>${e.message}</p>`;
+                }
+            }
+
+            if (tab === 'audit') {
+                try {
+                    const res = await fetch(`${API}/audit?limit=30`, {headers: {'Authorization': `Bearer ${token}`}});
+                    const entries = await res.json();
+                    if (entries.length === 0) {
+                        side.innerHTML = '<h3>Auditoría</h3><p style="color:var(--text-dim)">Sin entradas</p>';
+                        return;
+                    }
+                    let html = '<h3>Auditoría</h3><table class="audit-table"><tr><th>Hora</th><th>Evento</th><th>Agente</th></tr>';
+                    entries.reverse().forEach(e => {
+                        const ts = (e.timestamp || '').slice(11, 19);
+                        const sev = e.severity === 'critical' ? 'red' : e.severity === 'warning' ? 'yellow' : 'green';
+                        html += `<tr><td>${ts}</td><td><span class="badge ${sev}">${e.event_type}</span></td><td>${e.agent_id}</td></tr>`;
+                    });
+                    html += '</table>';
+                    side.innerHTML = html;
+                } catch (e) {
+                    side.innerHTML = `<h3>Error</h3><p>${e.message}</p>`;
+                }
+            }
+        }
+
+        // Keyboard shortcut
+        document.getElementById('input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+        });
+
+        init();
+    </script>
+</body>
+</html>

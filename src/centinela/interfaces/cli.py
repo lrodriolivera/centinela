@@ -282,6 +282,29 @@ def audit(
 
 
 @app.command()
+def serve(
+    host: str = typer.Option(None, "--host", "-h", help="Bind address"),
+    port: int = typer.Option(None, "--port", "-p", help="Port number"),
+):
+    """Start the Centinela API gateway + Web UI."""
+    from centinela.gateway.server import run_server
+
+    config = get_config()
+    h = host or config.gateway.host
+    p = port or config.gateway.port
+    console.print(
+        Panel(
+            f"[bold cyan]Centinela Gateway[/]\n"
+            f"API:    http://{h}:{p}/api/docs\n"
+            f"Web UI: http://{h}:{p}/\n"
+            f"Health: http://{h}:{p}/api/health",
+            border_style="cyan",
+        )
+    )
+    run_server(host=h, port=p)
+
+
+@app.command()
 def status():
     """Show orchestrator status (agents, memory, models)."""
     from centinela.core.orchestrator import get_orchestrator

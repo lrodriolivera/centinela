@@ -45,4 +45,4 @@ coverage.xml
 
 # Node (web UI)
 node_modules/
-src/centinela/web/dist/
+# Note: web/dist/index.html is tracked (built-in SPA)
